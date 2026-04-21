@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/1kyryll/onetube/server/internal/common/gen"
+	"github.com/google/uuid"
 )
 
 type UserServiceImpl struct {
@@ -29,6 +30,15 @@ func (s *UserServiceImpl) CreateUser(ctx context.Context, email, username, displ
 
 func (s *UserServiceImpl) GetUserByEmail(ctx context.Context, email string) (*gen.User, error) {
 	u, err := s.queries.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &u, nil
+}
+
+func (s *UserServiceImpl) GetUserByID(ctx context.Context, id uuid.UUID) (*gen.User, error) {
+	u, err := s.queries.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}

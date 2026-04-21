@@ -118,6 +118,39 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) Logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     s.cfg.CookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   s.cfg.Secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+func (s *Server) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	uid, ok := userIDFrom(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := s.svc.GetUserByID(r.Context(), uid)
+	if err != nil {
+		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, userResponse{
+		ID:          user.ID,
+		Email:       user.Email,
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
+	})
+}
+
 func (s *Server) SetSessionCookie(w http.ResponseWriter, uid uuid.UUID) {
 	token, _ := auth.IssueToken(s.cfg.JWTSecret, uid, 24*time.Hour)
 
