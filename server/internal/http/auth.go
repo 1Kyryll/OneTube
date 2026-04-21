@@ -67,7 +67,7 @@ func (s *Server) HandleSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.svc.Signup(r.Context(), req.Email, req.Username, req.DisplayName, hash)
+	user, err := s.svc.CreateUser(r.Context(), req.Email, req.Username, req.DisplayName, hash)
 	if err != nil {
 		http.Error(w, "Failed to signup user", http.StatusInternalServerError)
 		return
@@ -97,8 +97,14 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.svc.Login(r.Context(), req.Email, req.Password)
+	user, err := s.svc.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	ok, err := auth.VerifyPassword(req.Password, user.PasswordHash)
+	if err != nil || !ok {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}

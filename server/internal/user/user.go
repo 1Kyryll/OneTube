@@ -16,10 +16,22 @@ func NewUserService(queries *gen.Queries) *UserServiceImpl {
 	}
 }
 
-func (s *UserServiceImpl) Signup(ctx context.Context, email, username, displayName, password string) (*gen.User, error) {
-	return &gen.User{}, nil
+func (s *UserServiceImpl) CreateUser(ctx context.Context, email, username, displayName, passwordHash string) (*gen.User, error) {
+	u, err := s.queries.CreateUser(ctx, gen.CreateUserParams{
+		Email:        email,
+		Username:     username,
+		DisplayName:  displayName,
+		PasswordHash: passwordHash,
+	})
+
+	return &u, err
 }
 
-func (s *UserServiceImpl) Login(ctx context.Context, email, password string) (*gen.User, error) {
-	return &gen.User{}, nil
+func (s *UserServiceImpl) GetUserByEmail(ctx context.Context, email string) (*gen.User, error) {
+	u, err := s.queries.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &u, nil
 }
