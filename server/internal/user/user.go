@@ -19,3 +19,7 @@ func NewUserService(queries *gen.Queries) *UserServiceImpl {
 func (s *UserServiceImpl) Signup(ctx context.Context, email, username, displayName, password string) (*gen.User, error) {
 	return &gen.User{}, nil
 }
+
+func (s *UserServiceImpl) Login(ctx context.Context, email, password string) (*gen.User, error) {
+	return &gen.User{}, nil
+}

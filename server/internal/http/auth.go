@@ -32,6 +32,11 @@ type signupRequest struct {
 	Password    string `json:"password"`
 }
 
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type userResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Email       string    `json:"email"`
@@ -70,6 +75,36 @@ func (s *Server) HandleSignup(w http.ResponseWriter, r *http.Request) {
 
 	s.SetSessionCookie(w, user.ID)
 	writeJSON(w, http.StatusCreated, userResponse{
+		ID:          user.ID,
+		Email:       user.Email,
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
+	})
+}
+
+func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	req.Email = strings.TrimSpace(req.Email)
+	req.Password = strings.TrimSpace(req.Password)
+
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+
+	user, err := s.svc.Login(r.Context(), req.Email, req.Password)
+	if err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	s.SetSessionCookie(w, user.ID)
+	writeJSON(w, http.StatusOK, userResponse{
 		ID:          user.ID,
 		Email:       user.Email,
 		Username:    user.Username,
