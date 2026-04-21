@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+*.log
+
+.env
+.env.local
+server/.env
+
+# go
+server/bin/
+*.exe
+server/internal/db/
+
+# os
+.DS_Store
+Thumbs.db
