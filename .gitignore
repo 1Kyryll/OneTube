@@ -10,8 +10,9 @@ server/.env
 # go
 server/bin/
 *.exe
-server/internal/db/
+server/internal/common/gen/
 
 # os
 .DS_Store
 Thumbs.db
+docs/ 
