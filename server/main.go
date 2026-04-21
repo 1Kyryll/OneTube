@@ -5,8 +5,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
+	"github.com/1kyryll/onetube/server/internal/common/gen"
+	config "github.com/1kyryll/onetube/server/internal/config"
+	server "github.com/1kyryll/onetube/server/internal/http"
+	service "github.com/1kyryll/onetube/server/internal/user"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -22,27 +25,17 @@ func main() {
 	}
 	defer pool.Close()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-		if err := pool.Ping(ctx); err != nil {
-			http.Error(w, "db down", http.StatusServiceUnavailable)
-			return
-		}
-		w.Write([]byte(`{"status":"ok"}`))
-	})
-
-	addr := ":" + getenv("PORT", "8080")
-	log.Printf("listening on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatal(err)
+	queries := gen.New(pool)
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("config: %v", err)
 	}
-}
 
-func getenv(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
+	svc := service.NewUserService(queries)
+
+	srv := server.NewServer(cfg, svc)
+	log.Printf("running on port %s", cfg.Port)
+	if err := http.ListenAndServe(":"+cfg.Port, srv.SetupRoutes()); err != nil {
+		log.Fatalf("server: %v", err)
 	}
-	return def
 }
