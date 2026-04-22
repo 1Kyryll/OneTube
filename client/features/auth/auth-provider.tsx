@@ -9,27 +9,31 @@ import {
   type ReactNode,
 } from "react";
 
-import { authApi } from "./api";
-import type { LoginInput, SignupInput, User } from "./types";
+import { getCurrentUser, logoutAction } from "./actions";
+import type { User } from "./types";
 
 type AuthState = {
   user: User | null;
   loading: boolean;
-  signup: (data: SignupInput) => Promise<void>;
-  login: (data: LoginInput) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({
+  children,
+  initialUser = null,
+}: {
+  children: ReactNode;
+  initialUser?: User | null;
+}) {
+  const [user, setUser] = useState<User | null>(initialUser);
+  const [loading, setLoading] = useState(initialUser === null);
 
   const refresh = useCallback(async () => {
     try {
-      setUser(await authApi.me());
+      setUser(await getCurrentUser());
     } catch {
       setUser(null);
     } finally {
@@ -37,25 +41,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (data: SignupInput) => {
-    setUser(await authApi.signup(data));
-  }, []);
-
-  const login = useCallback(async (data: LoginInput) => {
-    setUser(await authApi.login(data));
-  }, []);
-
   const logout = useCallback(async () => {
-    await authApi.logout();
+    await logoutAction();
     setUser(null);
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (initialUser === null) void refresh();
+  }, [initialUser, refresh]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );
