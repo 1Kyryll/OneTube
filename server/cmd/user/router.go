@@ -1,13 +1,21 @@
-package http
+package main
 
-import "net/http"
+import (
+	"net/http"
 
-func (s *Server) SetupRoutes() http.Handler {
+	"github.com/1kyryll/onetube/server/internal/auth"
+	"github.com/1kyryll/onetube/server/internal/config"
+	userhandlers "github.com/1kyryll/onetube/server/internal/user/handlers"
+)
+
+func newRouter(cfg *config.Config, userH *userhandlers.UserHTTPHandler) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/signup", s.HandleSignup)
-	mux.HandleFunc("/login", s.Login)
-	mux.HandleFunc("/logout", s.Logout)
-	mux.Handle("/me", s.requireAuth(http.HandlerFunc(s.GetCurrentUser)))
+
+	mux.HandleFunc("POST /api/auth/signup", userH.Signup)
+	mux.HandleFunc("POST /api/auth/login", userH.Login)
+	mux.HandleFunc("POST /api/auth/logout", userH.Logout)
+	mux.Handle("GET /api/auth/me", auth.RequireAuth(cfg, http.HandlerFunc(userH.GetCurrentUser)))
+
 	return withCORS(mux)
 }
 

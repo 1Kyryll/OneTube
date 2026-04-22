@@ -1,4 +1,4 @@
-package http
+package handlers
 
 import (
 	"encoding/json"
@@ -11,41 +11,23 @@ import (
 	"github.com/1kyryll/onetube/server/internal/auth"
 	"github.com/1kyryll/onetube/server/internal/config"
 	"github.com/1kyryll/onetube/server/internal/user/types"
+	"github.com/1kyryll/onetube/server/internal/util"
 )
 
-type Server struct {
+type UserHTTPHandler struct {
 	cfg *config.Config
 	svc types.UserService
 }
 
-func NewServer(cfg *config.Config, svc types.UserService) *Server {
-	return &Server{
+func NewUserHTTPHandler(cfg *config.Config, svc types.UserService) *UserHTTPHandler {
+	return &UserHTTPHandler{
 		cfg: cfg,
 		svc: svc,
 	}
 }
 
-type signupRequest struct {
-	Email       string `json:"email"`
-	Username    string `json:"username"`
-	DisplayName string `json:"display_name"`
-	Password    string `json:"password"`
-}
-
-type loginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type userResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Email       string    `json:"email"`
-	Username    string    `json:"username"`
-	DisplayName string    `json:"display_name"`
-}
-
-func (s *Server) HandleSignup(w http.ResponseWriter, r *http.Request) {
-	var req signupRequest
+func (h *UserHTTPHandler) Signup(w http.ResponseWriter, r *http.Request) {
+	var req types.SignupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -67,14 +49,14 @@ func (s *Server) HandleSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.svc.CreateUser(r.Context(), req.Email, req.Username, req.DisplayName, hash)
+	user, err := h.svc.CreateUser(r.Context(), req.Email, req.Username, req.DisplayName, hash)
 	if err != nil {
 		http.Error(w, "Failed to signup user", http.StatusInternalServerError)
 		return
 	}
 
-	s.SetSessionCookie(w, user.ID)
-	writeJSON(w, http.StatusCreated, userResponse{
+	h.setSessionCookie(w, user.ID)
+	util.WriteJSON(w, http.StatusCreated, types.UserResponse{
 		ID:          user.ID,
 		Email:       user.Email,
 		Username:    user.Username,
@@ -82,8 +64,8 @@ func (s *Server) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
-	var req loginRequest
+func (h *UserHTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req types.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -97,7 +79,7 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.svc.GetUserByEmail(r.Context(), req.Email)
+	user, err := h.svc.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
@@ -109,8 +91,8 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.SetSessionCookie(w, user.ID)
-	writeJSON(w, http.StatusOK, userResponse{
+	h.setSessionCookie(w, user.ID)
+	util.WriteJSON(w, http.StatusOK, types.UserResponse{
 		ID:          user.ID,
 		Email:       user.Email,
 		Username:    user.Username,
@@ -118,32 +100,33 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) Logout(w http.ResponseWriter, r *http.Request) {
+func (h *UserHTTPHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     s.cfg.CookieName,
+		Name:     h.cfg.CookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   s.cfg.Secure,
+		Secure:   h.cfg.Secure,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
-	uid, ok := userIDFrom(r.Context())
+func (h *UserHTTPHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	uid, ok := auth.UserIDFrom(r.Context())
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	user, err := s.svc.GetUserByID(r.Context(), uid)
+	user, err := h.svc.GetUserByID(r.Context(), uid)
 	if err != nil {
 		http.Error(w, "Failed to get user", http.StatusInternalServerError)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, userResponse{
+	util.WriteJSON(w, http.StatusOK, types.UserResponse{
 		ID:          user.ID,
 		Email:       user.Email,
 		Username:    user.Username,
@@ -151,22 +134,16 @@ func (s *Server) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) SetSessionCookie(w http.ResponseWriter, uid uuid.UUID) {
-	token, _ := auth.IssueToken(s.cfg.JWTSecret, uid, 24*time.Hour)
+func (h *UserHTTPHandler) setSessionCookie(w http.ResponseWriter, uid uuid.UUID) {
+	token, _ := auth.IssueToken(h.cfg.JWTSecret, uid, 24*time.Hour)
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     s.cfg.CookieName,
+		Name:     h.cfg.CookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   s.cfg.Secure,
+		Secure:   h.cfg.Secure,
 		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(7 * 24 * time.Hour),
+		Expires:  time.Now().Add(24 * time.Hour),
 	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
 }
