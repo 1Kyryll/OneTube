@@ -7,7 +7,7 @@ Demo YouTube-like app: signup/login, upload, watch with quality selection (360p/
 - Backend: Go (`pgx`/`pgxpool`, `golang-migrate`)
 - Frontend: Next.js (App Router)
 - DB: Postgres
-- Object storage: AWS S3
+- Object storage: MinIO S3
 - Queue: RabbitMQ
 - Streaming: HLS (H.264 in fragmented MP4), played via hls.js
 - Auth: JWT (HS256) in `HttpOnly; Secure; SameSite=Lax` cookie, 24h expiry
