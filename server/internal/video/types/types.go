@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -17,10 +18,10 @@ type CreateVideoRequest struct {
 }
 
 type CreateVideoResponse struct {
-	VideoID    string `json:"video_id"`
-	UploadURL  string `json:"upload_url"`
-	StorageKey string `json:"storage_key"`
-	ExpiresIn  int    `json:"expires_in_seconds"`
+	VideoID    uuid.UUID `json:"video_id"`
+	UploadURL  string    `json:"upload_url"`
+	StorageKey string    `json:"storage_key"`
+	ExpiresIn  int       `json:"expires_in_seconds"`
 }
 
 type CompleteUploadRequest struct {
@@ -33,13 +34,13 @@ type VideoDTO struct {
 	UploaderName    string    `json:"uploader_name"`
 	Title           string    `json:"title"`
 	Description     string    `json:"description"`
-	DurationSeconds int       `json:"duration_seconds,omitempty"`
+	DurationSeconds int32     `json:"duration_seconds,omitempty"`
 	Visibility      string    `json:"visibility"`
 	Status          string    `json:"status"`
 	ViewCount       int       `json:"view_count"`
 	ThumbnailURL    string    `json:"thumbnail_url,omitempty"`
-	CreatedAt       string    `json:"created_at"`
-	PublishedAt     string    `json:"published_at,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	PublishedAt     time.Time `json:"published_at,omitempty"`
 }
 
 type WatchResponse struct {
@@ -53,8 +54,8 @@ type FeedPage struct {
 }
 
 type FeedCursor struct {
-	PublishedAt string `json:"published_at"`
-	ID          string `json:"id"`
+	PublishedAt time.Time `json:"published_at"`
+	ID          uuid.UUID `json:"id"`
 }
 
 type VideoService interface {
