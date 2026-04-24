@@ -10,3 +10,6 @@ ON CONFLICT (id) DO UPDATE SET
     bitrate = EXCLUDED.bitrate,
     width = EXCLUDED.width,
     height = EXCLUDED.height;
+
+-- name: DeleteAssetsByVideo :exec
+DELETE FROM video_assets WHERE video_id = $1;
