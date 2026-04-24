@@ -251,7 +251,7 @@ func (s *VideoServiceImpl) SoftDelete(ctx context.Context, uploaderID, videoID u
 	})
 }
 
-func (s *VideoServiceImpl) IncrementView(ctx context.Context, videoID uuid.UUID) error {
+func (s *VideoServiceImpl) IncrementViewCount(ctx context.Context, videoID uuid.UUID) error {
 	return s.queries.IncrementViewCount(ctx, videoID)
 }
 
