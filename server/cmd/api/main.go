@@ -12,16 +12,18 @@ import (
 	"github.com/1kyryll/onetube/server/internal/common/queue"
 	s3client "github.com/1kyryll/onetube/server/internal/common/s3"
 	"github.com/1kyryll/onetube/server/internal/config"
+	userhandlers "github.com/1kyryll/onetube/server/internal/user/handlers"
+	userservices "github.com/1kyryll/onetube/server/internal/user/services"
 	videohandlers "github.com/1kyryll/onetube/server/internal/video/handlers"
 	videoservices "github.com/1kyryll/onetube/server/internal/video/services"
 )
 
 func main() {
-	_ = godotenv.Load("../../.env", "../.env", ".env")
+	_ = godotenv.Load("../../../.env", "../../.env", "../.env", ".env")
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Fatalf("config: %v", err)
 	}
 
 	ctx := context.Background()
@@ -30,7 +32,6 @@ func main() {
 		log.Fatalf("db connect: %v", err)
 	}
 	defer pool.Close()
-
 	queries := gen.New(pool)
 
 	s3, err := s3client.NewClient(s3client.Options{
@@ -42,22 +43,25 @@ func main() {
 		UseSSL:         cfg.S3UseSSL,
 	})
 	if err != nil {
-		log.Fatalf("Failed to init s3 client: %v", err)
+		log.Fatalf("s3 client: %v", err)
 	}
 
 	publisher, err := queue.NewPublisher(cfg.RabbitURL, cfg.TranscodeQueue)
 	if err != nil {
-		log.Fatalf("Rabbit Publisher: %v", err)
+		log.Fatalf("rabbit publisher: %v", err)
 	}
 	defer publisher.Close()
+
+	userSvc := userservices.NewUserService(queries)
+	userH := userhandlers.NewUserHTTPHandler(cfg, userSvc)
 
 	videoSvc := videoservices.NewVideoService(queries, s3, publisher)
 	videoH := videohandlers.NewVideoHTTPHandler(cfg, videoSvc)
 
-	router := newRouter(cfg, videoH)
+	router := newRouter(cfg, userH, videoH)
 
-	log.Printf("Video API listening on :%s", cfg.Port)
+	log.Printf("api listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, router); err != nil {
-		log.Fatalf("Server: %v", err)
+		log.Fatalf("server: %v", err)
 	}
 }
