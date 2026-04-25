@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -12,10 +14,7 @@ import (
 	"github.com/1kyryll/onetube/server/internal/common/queue"
 	s3client "github.com/1kyryll/onetube/server/internal/common/s3"
 	"github.com/1kyryll/onetube/server/internal/config"
-	userhandlers "github.com/1kyryll/onetube/server/internal/user/handlers"
-	userservices "github.com/1kyryll/onetube/server/internal/user/services"
-	videohandlers "github.com/1kyryll/onetube/server/internal/video/handlers"
-	videoservices "github.com/1kyryll/onetube/server/internal/video/services"
+	transcodesvc "github.com/1kyryll/onetube/server/internal/transcode/services"
 )
 
 func main() {
@@ -26,7 +25,9 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Fail to connect to DB: %v", err)
@@ -46,22 +47,16 @@ func main() {
 		log.Fatalf("Failed to create s3 client: %v", err)
 	}
 
-	publisher, err := queue.NewPublisher(cfg.RabbitURL, cfg.TranscodeQueue)
+	consumer, err := queue.NewConsumer(cfg.RabbitURL, cfg.TranscodeQueue)
 	if err != nil {
-		log.Fatalf("Failed to create Rabbit publisher: %v", err)
+		log.Fatalf("Failed to create Rabbit consumer: %v", err)
 	}
-	defer publisher.Close()
+	defer consumer.Close()
 
-	userSvc := userservices.NewUserService(queries)
-	userH := userhandlers.NewUserHTTPHandler(cfg, userSvc)
+	transcoder := transcodesvc.NewTranscoder(queries, s3)
 
-	videoSvc := videoservices.NewVideoService(queries, s3, publisher)
-	videoH := videohandlers.NewVideoHTTPHandler(cfg, videoSvc)
-
-	router := newRouter(cfg, userH, videoH)
-
-	log.Printf("api listening on :%s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, router); err != nil {
-		log.Fatalf("server: %v", err)
+	log.Printf("worker: consuming queue %q", cfg.TranscodeQueue)
+	if err := consumer.Run(ctx, transcoder.Process); err != nil && err != context.Canceled {
+		log.Fatalf("consumer: %v", err)
 	}
 }
