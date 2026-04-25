@@ -62,6 +62,8 @@ type VideoService interface {
 	CreateUploadIntent(ctx context.Context, uploaderID uuid.UUID, req CreateVideoRequest) (*CreateVideoResponse, error)
 	MarkUploaded(ctx context.Context, uploaderID, videoID uuid.UUID, extension string) error
 	GetForWatch(ctx context.Context, videoID uuid.UUID) (*WatchResponse, error)
+	GetMasterPlaylist(ctx context.Context, videoID uuid.UUID) ([]byte, error)
+	GetRenditionPlaylist(ctx context.Context, videoID uuid.UUID, quality string) ([]byte, error)
 	ListFeed(ctx context.Context, limit int32, cursor *FeedCursor) (*FeedPage, error)
 	ListByUploader(ctx context.Context, uploaderID uuid.UUID, limit int32, cursor *FeedCursor) (*FeedPage, error)
 	SoftDelete(ctx context.Context, uploaderID, videoID uuid.UUID) error

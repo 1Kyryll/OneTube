@@ -25,6 +25,8 @@ func newRouter(cfg *config.Config, userH *userhandlers.UserHTTPHandler, videoH *
 	mux.HandleFunc("GET /api/videos/feed", videoH.Feed)
 	mux.HandleFunc("GET /api/videos/{id}", videoH.GetStatus)
 	mux.HandleFunc("POST /api/videos/{id}/view", videoH.IncrementViewCount)
+	mux.HandleFunc("GET /api/videos/{id}/hls/master.m3u8", videoH.MasterPlaylist)
+	mux.HandleFunc("GET /api/videos/{id}/hls/{quality}/playlist.m3u8", videoH.RenditionPlaylist)
 
 	return withCORS(mux)
 }

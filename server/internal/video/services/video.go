@@ -1,15 +1,18 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/minio/minio-go/v7"
 
 	"github.com/1kyryll/onetube/server/internal/common/gen"
 	"github.com/1kyryll/onetube/server/internal/common/queue"
@@ -25,19 +28,22 @@ var (
 const (
 	uploadUrlTTL   = 2 * time.Hour
 	playbackUrlTTL = 24 * time.Hour
+	segmentUrlTTL  = 4 * time.Hour
 )
 
 type VideoServiceImpl struct {
-	queries   *gen.Queries
-	s3        *s3client.Client
-	publisher *queue.Publisher
+	queries       *gen.Queries
+	s3            *s3client.Client
+	publisher     *queue.Publisher
+	apiPublicBase string
 }
 
-func NewVideoService(queries *gen.Queries, s3 *s3client.Client, publisher *queue.Publisher) *VideoServiceImpl {
+func NewVideoService(queries *gen.Queries, s3 *s3client.Client, publisher *queue.Publisher, apiPublicBase string) *VideoServiceImpl {
 	return &VideoServiceImpl{
-		queries:   queries,
-		s3:        s3,
-		publisher: publisher,
+		queries:       queries,
+		s3:            s3,
+		publisher:     publisher,
+		apiPublicBase: strings.TrimRight(apiPublicBase, "/"),
 	}
 }
 
@@ -130,15 +136,12 @@ func (s *VideoServiceImpl) GetForWatch(ctx context.Context, videoID uuid.UUID) (
 		return nil, fmt.Errorf("Failed to fetch uploader: %w", err)
 	}
 
-	masterURL, err := s.s3.PresignGet(ctx, s3client.MasterPlaylistKey(videoID), playbackUrlTTL)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to generate presigned URL: %w", err)
-	}
+	masterURL := fmt.Sprintf("%s/api/videos/%s/hls/master.m3u8", s.apiPublicBase, videoID)
 
 	dto := s.toDTO(v, u.Username)
 	if v.ThumbnailKey.Valid {
 		thumbURL, err := s.s3.PresignGet(ctx, v.ThumbnailKey.String, playbackUrlTTL)
-		if err != nil {
+		if err == nil {
 			dto.ThumbnailURL = thumbURL
 		}
 	}
@@ -147,6 +150,75 @@ func (s *VideoServiceImpl) GetForWatch(ctx context.Context, videoID uuid.UUID) (
 		Video:             dto,
 		MasterPlaylistURL: masterURL,
 	}, nil
+}
+
+// GetMasterPlaylist returns the master m3u8 body. Variant entries are bare
+// relative paths like "720p/playlist.m3u8" and resolve relative to the request
+// URL — i.e. back to this API's rendition endpoint.
+func (s *VideoServiceImpl) GetMasterPlaylist(ctx context.Context, videoID uuid.UUID) ([]byte, error) {
+	v, err := s.queries.GetVideoByID(ctx, videoID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to fetch video: %w", err)
+	}
+	if v.Status != "ready" {
+		return nil, ErrNotReady
+	}
+	return s.fetchObject(ctx, s3client.MasterPlaylistKey(videoID))
+}
+
+// GetRenditionPlaylist fetches the per-quality playlist and rewrites every
+// segment line to a presigned S3 GET URL so hls.js can pull .ts files directly
+// from MinIO without going through the API.
+func (s *VideoServiceImpl) GetRenditionPlaylist(ctx context.Context, videoID uuid.UUID, quality string) ([]byte, error) {
+	v, err := s.queries.GetVideoByID(ctx, videoID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to fetch video: %w", err)
+	}
+	if v.Status != "ready" {
+		return nil, ErrNotReady
+	}
+
+	body, err := s.fetchObject(ctx, s3client.RenditionPlaylistKey(videoID, quality))
+	if err != nil {
+		return nil, err
+	}
+
+	prefix := s3client.RenditionPrefix(videoID, quality)
+	var out strings.Builder
+	sc := bufio.NewScanner(strings.NewReader(string(body)))
+	sc.Buffer(make([]byte, 64*1024), 1024*1024)
+	for sc.Scan() {
+		line := sc.Text()
+		trimmed := strings.TrimSpace(line)
+		if strings.HasSuffix(trimmed, ".ts") {
+			signed, err := s.s3.PresignGet(ctx, prefix+trimmed, segmentUrlTTL)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to presign segment: %w", err)
+			}
+			out.WriteString(signed)
+			out.WriteString("\n")
+			continue
+		}
+		out.WriteString(line)
+		out.WriteString("\n")
+	}
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+	return []byte(out.String()), nil
+}
+
+func (s *VideoServiceImpl) fetchObject(ctx context.Context, key string) ([]byte, error) {
+	obj, err := s.s3.API.GetObject(ctx, s.s3.Bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("s3 get %s: %w", key, err)
+	}
+	defer obj.Close()
+	data, err := io.ReadAll(obj)
+	if err != nil {
+		return nil, fmt.Errorf("s3 read %s: %w", key, err)
+	}
+	return data, nil
 }
 
 func (s *VideoServiceImpl) ListFeed(ctx context.Context, limit int32, cursor *types.FeedCursor) (*types.FeedPage, error) {

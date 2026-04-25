@@ -55,7 +55,7 @@ func main() {
 	userSvc := userservices.NewUserService(queries)
 	userH := userhandlers.NewUserHTTPHandler(cfg, userSvc)
 
-	videoSvc := videoservices.NewVideoService(queries, s3, publisher)
+	videoSvc := videoservices.NewVideoService(queries, s3, publisher, cfg.APIPublicBaseURL)
 	videoH := videohandlers.NewVideoHTTPHandler(cfg, videoSvc)
 
 	router := newRouter(cfg, userH, videoH)

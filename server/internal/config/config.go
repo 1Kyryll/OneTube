@@ -19,6 +19,8 @@ type Config struct {
 	S3UseSSL         bool
 	S3PublicEndpoint string
 
+	APIPublicBaseURL string
+
 	RabbitURL      string
 	TranscodeQueue string
 }
@@ -58,6 +60,11 @@ func LoadConfig() (*Config, error) {
 		s3PublicEndpoint = s3Endpoint
 	}
 
+	apiPublicBase := os.Getenv("API_PUBLIC_BASE_URL")
+	if apiPublicBase == "" {
+		apiPublicBase = "http://localhost:" + port
+	}
+
 	rabbitURL := os.Getenv("RABBIT_URL")
 	if rabbitURL == "" {
 		return nil, errors.New("RABBIT_URL is required")
@@ -79,6 +86,7 @@ func LoadConfig() (*Config, error) {
 		S3Bucket:         s3Bucket,
 		S3UseSSL:         os.Getenv("S3_USE_SSL") == "true",
 		S3PublicEndpoint: s3PublicEndpoint,
+		APIPublicBaseURL: apiPublicBase,
 		RabbitURL:        rabbitURL,
 		TranscodeQueue:   transcodeQueue,
 	}, nil

@@ -159,6 +159,53 @@ func (h *VideoHTTPHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *VideoHTTPHandler) MasterPlaylist(w http.ResponseWriter, r *http.Request) {
+	vid, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid video id", http.StatusBadRequest)
+		return
+	}
+	body, err := h.svc.GetMasterPlaylist(r.Context(), vid)
+	if err != nil {
+		if errors.Is(err, services.ErrNotReady) {
+			http.Error(w, "Not ready", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	writePlaylist(w, body)
+}
+
+func (h *VideoHTTPHandler) RenditionPlaylist(w http.ResponseWriter, r *http.Request) {
+	vid, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid video id", http.StatusBadRequest)
+		return
+	}
+	quality := r.PathValue("quality")
+	if quality == "" || strings.ContainsAny(quality, "/\\") {
+		http.Error(w, "Invalid quality", http.StatusBadRequest)
+		return
+	}
+	body, err := h.svc.GetRenditionPlaylist(r.Context(), vid, quality)
+	if err != nil {
+		if errors.Is(err, services.ErrNotReady) {
+			http.Error(w, "Not ready", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	writePlaylist(w, body)
+}
+
+func writePlaylist(w http.ResponseWriter, body []byte) {
+	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(body)
+}
+
 func (h *VideoHTTPHandler) IncrementViewCount(w http.ResponseWriter, r *http.Request) {
 	vid, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
