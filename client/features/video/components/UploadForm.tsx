@@ -66,28 +66,83 @@ export function UploadForm() {
     }
 
     return (
-        <form onSubmit={onSubmit} style={{ maxWidth: 600 }}>
-        <label>Title<br /><input value={title} onChange={(e) => setTitle(e.target.value)} required /></label>
-        <br />
-        <label>Description<br /><textarea value={description} onChange={(e) => setDescription(e.target.value)} /></label>
-        <br />
-        <label>Visibility{" "}
-            <select value={visibility} onChange={(e) => setVisibility(e.target.value as "public" | "unlisted" | "private")}>
-            <option value="public">Public</option>
-            <option value="unlisted">Unlisted</option>
-            <option value="private">Private</option>
-            </select>
-        </label>
-        <br />
-        <input
-            type="file"
-            accept="video/*"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
-        <br />
-        <button disabled={busy} type="submit">{busy ? "Uploading..." : "Upload"}</button>
-        {busy && <div>Progress: {progress.toFixed(1)}%</div>}
-        {error && <div style={{ color: "crimson" }}>{error}</div>}
+        <form onSubmit={onSubmit} style={{ maxWidth: 600, display: "grid", gap: 12 }}>
+            <label style={labelStyle}>
+                Title
+                <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                    style={inputStyle}
+                />
+            </label>
+            <label style={labelStyle}>
+                Description
+                <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    style={{ ...inputStyle, resize: "vertical" }}
+                />
+            </label>
+            <label style={labelStyle}>
+                Visibility
+                <select
+                    value={visibility}
+                    onChange={(e) =>
+                        setVisibility(e.target.value as "public" | "unlisted" | "private")
+                    }
+                    style={inputStyle}
+                >
+                    <option value="public">Public</option>
+                    <option value="unlisted">Unlisted</option>
+                    <option value="private">Private</option>
+                </select>
+            </label>
+            <label style={labelStyle}>
+                File
+                <input
+                    type="file"
+                    accept="video/*"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    style={{ color: "#fff" }}
+                />
+            </label>
+            <button disabled={busy} type="submit" style={buttonStyle}>
+                {busy ? "Uploading..." : "Upload"}
+            </button>
+            {busy && (
+                <div style={{ color: "#9aa3b2" }}>Progress: {progress.toFixed(1)}%</div>
+            )}
+            {error && <div style={{ color: "#ff6b6b" }}>{error}</div>}
         </form>
     );
 }
+
+const labelStyle: React.CSSProperties = {
+    display: "grid",
+    gap: 4,
+    fontSize: 14,
+    color: "#fff",
+};
+
+const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: 8,
+    border: "1px solid #2a2a2a",
+    borderRadius: 4,
+    fontSize: 14,
+    background: "#161616",
+    color: "#fff",
+};
+
+const buttonStyle: React.CSSProperties = {
+    padding: 10,
+    border: "none",
+    borderRadius: 4,
+    background: "#fff",
+    color: "#111",
+    cursor: "pointer",
+    fontSize: 14,
+    fontWeight: 600,
+};

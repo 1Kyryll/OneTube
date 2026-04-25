@@ -80,17 +80,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: 8,
-  border: "1px solid #ccc",
+  border: "1px solid #2a2a2a",
   borderRadius: 4,
   fontSize: 14,
+  background: "#161616",
+  color: "#fff",
 };
 
 const buttonStyle: React.CSSProperties = {
   padding: 10,
   border: "none",
   borderRadius: 4,
-  background: "#111",
-  color: "#fff",
+  background: "#fff",
+  color: "#111",
   cursor: "pointer",
   fontSize: 14,
+  fontWeight: 600,
 };
