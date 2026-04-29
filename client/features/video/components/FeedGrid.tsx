@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cursorToString, getFeed } from "../actions";
 import type { FeedPage, VideoDTO } from "../types";
+import Image from "next/image";
 
 export function FeedGrid() {
     const [items, setItems] = useState<VideoDTO[]>([]);
@@ -62,33 +63,56 @@ export function FeedGrid() {
                             style={{ textDecoration: "none", color: "inherit" }}
                         >
                             <div>
-                                {v.thumbnail_url ? (
-                                    <img
-                                        src={v.thumbnail_url}
-                                        alt={v.title}
-                                        style={{
-                                            width: "100%",
-                                            aspectRatio: "16/9",
-                                            objectFit: "cover",
-                                            background: "#1a1a1a",
-                                            borderRadius: 8,
-                                        }}
-                                    />
-                                ) : (
-                                    <div
-                                        style={{
-                                            width: "100%",
-                                            aspectRatio: "16/9",
-                                            background: "#1a1a1a",
-                                            borderRadius: 8,
-                                        }}
-                                    />
-                                )}
+                                <div
+                                    style={{
+                                        position: "relative",
+                                        width: "100%",
+                                        aspectRatio: "16/9",
+                                        background: "#1a1a1a",
+                                        borderRadius: 8,
+                                        overflow: "hidden",
+                                    }}
+                                >
+                                    {v.thumbnail_url && (
+                                        <Image
+                                            src={v.thumbnail_url}
+                                            alt={v.title}
+                                            fill
+                                            unoptimized
+                                            sizes="(max-width: 600px) 100vw, 240px"
+                                            style={{ objectFit: "cover" }}
+                                        />
+                                    )}
+                                </div>
                                 <div style={{ marginTop: 8, fontWeight: 600, color: "#fff" }}>
                                     {v.title}
                                 </div>
-                                <div style={{ fontSize: 13, color: "#9aa3b2" }}>
-                                    @{v.uploader_username} · {v.view_count} views
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                        fontSize: 13,
+                                        color: "#9aa3b2",
+                                    }}
+                                >
+                                    {v.uploader_avatar_url ? (
+                                        <Image
+                                            src={v.uploader_avatar_url}
+                                            alt=""
+                                            width={20}
+                                            height={20}
+                                            unoptimized
+                                            style={{
+                                                borderRadius: "50%",
+                                                objectFit: "cover",
+                                                background: "#222",
+                                            }}
+                                        />
+                                    ) : null}
+                                    <span>
+                                        @{v.uploader_username} · {v.view_count} views
+                                    </span>
                                 </div>
                             </div>
                         </Link>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useTransition } from "react";
 
@@ -26,8 +27,14 @@ export function NavBar() {
           <>
             <Link href="/profile" style={profileLinkStyle}>
               {user.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.avatar} alt="" style={avatarStyle} />
+                <Image
+                  src={user.avatar}
+                  alt=""
+                  width={28}
+                  height={28}
+                  unoptimized
+                  style={{ borderRadius: "50%", objectFit: "cover", background: "#222" }}
+                />
               ) : (
                 <span style={avatarPlaceholderStyle}>
                   {user.display_name.slice(0, 1).toUpperCase()}
@@ -102,14 +109,6 @@ const profileLinkStyle: React.CSSProperties = {
   gap: 8,
   color: "#fff",
   textDecoration: "none",
-};
-
-const avatarStyle: React.CSSProperties = {
-  width: 28,
-  height: 28,
-  borderRadius: "50%",
-  objectFit: "cover",
-  background: "#222",
 };
 
 const avatarPlaceholderStyle: React.CSSProperties = {

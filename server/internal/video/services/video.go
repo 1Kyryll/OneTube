@@ -145,6 +145,11 @@ func (s *VideoServiceImpl) GetForWatch(ctx context.Context, videoID uuid.UUID) (
 			dto.ThumbnailURL = thumbURL
 		}
 	}
+	if u.AvatarKey.Valid {
+		if avatarURL, err := s.s3.PresignGet(ctx, u.AvatarKey.String, playbackUrlTTL); err == nil {
+			dto.UploaderAvatarURL = avatarURL
+		}
+	}
 
 	return &types.WatchResponse{
 		Video:             dto,
@@ -237,15 +242,15 @@ func (s *VideoServiceImpl) ListFeed(ctx context.Context, limit int32, cursor *ty
 	out := make([]types.VideoDTO, 0, len(rows))
 	for _, r := range rows {
 		dto := types.VideoDTO{
-			ID:           r.ID,
-			UploaderID:   r.UploaderID,
-			UploaderName: r.UploaderUsername,
-			Title:        r.Title,
-			Description:  r.Description,
-			Visibility:   r.Visibility,
-			Status:       r.Status,
-			ViewCount:    int(r.ViewCount),
-			CreatedAt:    r.CreatedAt.Time,
+			ID:               r.ID,
+			UploaderID:       r.UploaderID,
+			UploaderUsername: r.UploaderUsername,
+			Title:            r.Title,
+			Description:      r.Description,
+			Visibility:       r.Visibility,
+			Status:           r.Status,
+			ViewCount:        int(r.ViewCount),
+			CreatedAt:        r.CreatedAt.Time,
 		}
 
 		if r.DurationSeconds.Valid {
@@ -259,6 +264,11 @@ func (s *VideoServiceImpl) ListFeed(ctx context.Context, limit int32, cursor *ty
 		if r.ThumbnailKey.Valid {
 			if u, err := s.s3.PresignGet(ctx, r.ThumbnailKey.String, playbackUrlTTL); err == nil {
 				dto.ThumbnailURL = u
+			}
+		}
+		if r.UploaderAvatarKey.Valid {
+			if u, err := s.s3.PresignGet(ctx, r.UploaderAvatarKey.String, playbackUrlTTL); err == nil {
+				dto.UploaderAvatarURL = u
 			}
 		}
 		out = append(out, dto)
@@ -299,9 +309,18 @@ func (s *VideoServiceImpl) ListByUploader(ctx context.Context, uploaderID uuid.U
 		return nil, err
 	}
 
+	var avatarURL string
+	if u.AvatarKey.Valid {
+		if a, err := s.s3.PresignGet(ctx, u.AvatarKey.String, playbackUrlTTL); err == nil {
+			avatarURL = a
+		}
+	}
+
 	out := make([]types.VideoDTO, 0, len(rows))
 	for _, v := range rows {
-		out = append(out, s.toDTO(v, u.Username))
+		dto := s.toDTO(v, u.Username)
+		dto.UploaderAvatarURL = avatarURL
+		out = append(out, dto)
 	}
 
 	page := &types.FeedPage{Items: out}
@@ -329,15 +348,15 @@ func (s *VideoServiceImpl) IncrementViewCount(ctx context.Context, videoID uuid.
 
 func (s *VideoServiceImpl) toDTO(v gen.Video, uploaderName string) types.VideoDTO {
 	dto := types.VideoDTO{
-		ID:           v.ID,
-		UploaderID:   v.UploaderID,
-		UploaderName: uploaderName,
-		Title:        v.Title,
-		Description:  v.Description,
-		Visibility:   v.Visibility,
-		Status:       v.Status,
-		ViewCount:    int(v.ViewCount),
-		CreatedAt:    v.CreatedAt.Time,
+		ID:               v.ID,
+		UploaderID:       v.UploaderID,
+		UploaderUsername: uploaderName,
+		Title:            v.Title,
+		Description:      v.Description,
+		Visibility:       v.Visibility,
+		Status:           v.Status,
+		ViewCount:        int(v.ViewCount),
+		CreatedAt:        v.CreatedAt.Time,
 	}
 	if v.DurationSeconds.Valid {
 		d := v.DurationSeconds.Int32

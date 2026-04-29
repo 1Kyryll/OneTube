@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { VideoPlayer } from "../../../features/video/components/VideoPlayer";
 import { getWatch, recordView } from "../../../features/video/actions";
@@ -54,9 +55,36 @@ export default function WatchPage() {
     return (
         <main style={{ padding: 24 }}>
             <h1>{video.title}</h1>
-            <p>
-                by <strong>@{video.uploader_username}</strong> · {video.view_count} views
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "8px 0 16px" }}>
+                {video.uploader_avatar_url ? (
+                    <Image
+                        src={video.uploader_avatar_url}
+                        alt=""
+                        width={36}
+                        height={36}
+                        unoptimized
+                        style={{ borderRadius: "50%", objectFit: "cover", background: "#222" }}
+                    />
+                ) : (
+                    <span
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 36,
+                            height: 36,
+                            borderRadius: "50%",
+                            background: "#222",
+                            fontWeight: 700,
+                        }}
+                    >
+                        {video.uploader_username?.slice(0, 1).toUpperCase() ?? "?"}
+                    </span>
+                )}
+                <span>
+                    by <strong>@{video.uploader_username}</strong> · {video.view_count} views
+                </span>
+            </div>
             <VideoPlayer
                 src={masterURL}
                 poster={video.thumbnail_url}

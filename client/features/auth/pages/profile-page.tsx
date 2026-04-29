@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import { completeAvatarUpload, createAvatarUploadIntent } from "../actions";
@@ -91,8 +92,14 @@ export function ProfilePage() {
       <section style={cardStyle}>
         <div style={avatarRowStyle}>
           {displayedAvatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={displayedAvatar} alt="Avatar" style={avatarStyle} />
+            <Image
+              src={displayedAvatar}
+              alt="Avatar"
+              width={96}
+              height={96}
+              unoptimized
+              style={{ borderRadius: "50%", objectFit: "cover", background: "#222" }}
+            />
           ) : (
             <div style={{ ...avatarStyle, ...avatarPlaceholderStyle }}>
               {user.display_name.slice(0, 1).toUpperCase()}

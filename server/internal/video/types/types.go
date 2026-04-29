@@ -29,18 +29,19 @@ type CompleteUploadRequest struct {
 }
 
 type VideoDTO struct {
-	ID              uuid.UUID `json:"id"`
-	UploaderID      uuid.UUID `json:"uploader_id"`
-	UploaderName    string    `json:"uploader_name"`
-	Title           string    `json:"title"`
-	Description     string    `json:"description"`
-	DurationSeconds int32     `json:"duration_seconds,omitempty"`
-	Visibility      string    `json:"visibility"`
-	Status          string    `json:"status"`
-	ViewCount       int       `json:"view_count"`
-	ThumbnailURL    string    `json:"thumbnail_url,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	PublishedAt     time.Time `json:"published_at,omitempty"`
+	ID                uuid.UUID `json:"id"`
+	UploaderID        uuid.UUID `json:"uploader_id"`
+	UploaderUsername  string    `json:"uploader_username"`
+	UploaderAvatarURL string    `json:"uploader_avatar_url,omitempty"`
+	Title             string    `json:"title"`
+	Description       string    `json:"description"`
+	DurationSeconds   int32     `json:"duration_seconds,omitempty"`
+	Visibility        string    `json:"visibility"`
+	Status            string    `json:"status"`
+	ViewCount         int       `json:"view_count"`
+	ThumbnailURL      string    `json:"thumbnail_url,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
+	PublishedAt       time.Time `json:"published_at,omitempty"`
 }
 
 type WatchResponse struct {

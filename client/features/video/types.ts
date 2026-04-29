@@ -4,6 +4,7 @@ export interface VideoDTO {
     id: string;
     uploader_id: string;
     uploader_username: string;
+    uploader_avatar_url?: string;
     title: string;
     description: string;
     duration_seconds?: number;
