@@ -15,6 +15,8 @@ func newRouter(cfg *config.Config, userH *userhandlers.UserHTTPHandler, videoH *
 	mux.HandleFunc("POST /api/auth/signup", userH.Signup)
 	mux.HandleFunc("POST /api/auth/login", userH.Login)
 	mux.HandleFunc("POST /api/auth/logout", userH.Logout)
+	mux.Handle("POST /api/users/me/avatar:upload", auth.RequireAuth(cfg, http.HandlerFunc(userH.UploadAvatar)))
+	mux.Handle("POST /api/users/me/avatar:complete", auth.RequireAuth(cfg, http.HandlerFunc(userH.CompleteAvatarUpload)))
 	mux.Handle("GET /api/auth/me", auth.RequireAuth(cfg, http.HandlerFunc(userH.GetCurrentUser)))
 
 	mux.Handle("POST /api/videos", auth.RequireAuth(cfg, http.HandlerFunc(videoH.Create)))

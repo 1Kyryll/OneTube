@@ -24,9 +24,17 @@ export function NavBar() {
 
         {loading ? null : user ? (
           <>
-            <span style={{ opacity: 0.8 }}>
-              @{user.username}
-            </span>
+            <Link href="/profile" style={profileLinkStyle}>
+              {user.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatar} alt="" style={avatarStyle} />
+              ) : (
+                <span style={avatarPlaceholderStyle}>
+                  {user.display_name.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span style={{ opacity: 0.8 }}>@{user.username}</span>
+            </Link>
             <button
               onClick={() => startTransition(() => logout())}
               disabled={pending}
@@ -86,4 +94,32 @@ const buttonStyle: React.CSSProperties = {
   color: "#111",
   cursor: "pointer",
   fontWeight: 600,
+};
+
+const profileLinkStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  color: "#fff",
+  textDecoration: "none",
+};
+
+const avatarStyle: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  borderRadius: "50%",
+  objectFit: "cover",
+  background: "#222",
+};
+
+const avatarPlaceholderStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 28,
+  height: 28,
+  borderRadius: "50%",
+  background: "#222",
+  fontSize: 13,
+  fontWeight: 700,
 };

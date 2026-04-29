@@ -3,6 +3,7 @@ export type User = {
   email: string;
   username: string;
   display_name: string;
+  avatar?: string;
 };
 
 export type SignupInput = {

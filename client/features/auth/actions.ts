@@ -101,6 +101,41 @@ export async function logoutAction(): Promise<void> {
   jar.delete(SESSION_COOKIE);
 }
 
+export type AvatarUploadIntent = { url: string; key: string };
+
+export async function createAvatarUploadIntent(
+  contentType: string,
+): Promise<AvatarUploadIntent | { error: string }> {
+  const jar = await cookies();
+  const session = jar.get(SESSION_COOKIE);
+  if (!session) return { error: "Not authenticated" };
+
+  const res = await fetch(`${API_BASE}/api/users/me/avatar:upload`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: `${session.name}=${session.value}`,
+    },
+    body: JSON.stringify({ content_type: contentType }),
+    cache: "no-store",
+  });
+  if (!res.ok) return { error: `Upload intent failed (${res.status})` };
+  return (await res.json()) as AvatarUploadIntent;
+}
+
+export async function completeAvatarUpload(): Promise<ActionResult> {
+  const jar = await cookies();
+  const session = jar.get(SESSION_COOKIE);
+  if (!session) return { error: "Not authenticated" };
+
+  const res = await fetch(`${API_BASE}/api/users/me/avatar:complete`, {
+    method: "POST",
+    headers: { Cookie: `${session.name}=${session.value}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return { error: `Complete failed (${res.status})` };
+}
+
 export async function getCurrentUser(): Promise<User | null> {
   const jar = await cookies();
   const session = jar.get(SESSION_COOKIE);

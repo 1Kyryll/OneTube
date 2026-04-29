@@ -19,7 +19,9 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load("../../.env", "../.env", ".env")
+	for _, p := range []string{"../../.env", "../.env", ".env"} {
+		_ = godotenv.Load(p)
+	}
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -52,7 +54,7 @@ func main() {
 	}
 	defer publisher.Close()
 
-	userSvc := userservices.NewUserService(queries)
+	userSvc := userservices.NewUserService(queries, s3)
 	userH := userhandlers.NewUserHTTPHandler(cfg, userSvc)
 
 	videoSvc := videoservices.NewVideoService(queries, s3, publisher, cfg.APIPublicBaseURL)
