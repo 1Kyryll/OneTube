@@ -24,6 +24,7 @@ func NewUserService(queries *gen.Queries, s3 *s3client.Client) *UserServiceImpl 
 
 func (s *UserServiceImpl) CreateUser(ctx context.Context, email, username, displayName, passwordHash string) (*gen.User, error) {
 	u, err := s.queries.CreateUser(ctx, gen.CreateUserParams{
+		ID:           uuid.New(),
 		Email:        email,
 		Username:     username,
 		DisplayName:  displayName,
