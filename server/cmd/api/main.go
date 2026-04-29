@@ -52,7 +52,7 @@ func main() {
 	}
 	defer publisher.Close()
 
-	userSvc := userservices.NewUserService(queries)
+	userSvc := userservices.NewUserService(queries, s3)
 	userH := userhandlers.NewUserHTTPHandler(cfg, userSvc)
 
 	videoSvc := videoservices.NewVideoService(queries, s3, publisher, cfg.APIPublicBaseURL)

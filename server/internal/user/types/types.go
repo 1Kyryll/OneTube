@@ -8,9 +8,10 @@ import (
 )
 
 type UserService interface {
-	CreateUser(ctx context.Context, email, username, displayName, passwordHash string) (*gen.User, error)
+	CreateUser(ctx context.Context, email, username, displayName, passwordHash string, avatar string) (*gen.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*gen.User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*gen.User, error)
+	CreateAvatarUploadIntent(ctx context.Context, userID uuid.UUID, contentType string) (string, string, error)
 }
 
 type SignupRequest struct {
@@ -25,9 +26,19 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type UploadAvatarRequest struct {
+	Avatar string `json:"avatar"`
+}
+
+type UploadAvatarResponse struct {
+	Url string `json:"url"`
+	Key string `json:"key"`
+}
+
 type UserResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Email       string    `json:"email"`
 	Username    string    `json:"username"`
 	DisplayName string    `json:"display_name"`
+	Avatar      string    `json:"avatar"`
 }

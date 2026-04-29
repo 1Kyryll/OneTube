@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -37,6 +38,7 @@ func (h *UserHTTPHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	req.Username = strings.TrimSpace(req.Username)
 	req.DisplayName = strings.TrimSpace(req.DisplayName)
 	req.Password = strings.TrimSpace(req.Password)
+	avatarKey := ""
 
 	if req.Email == "" || req.Username == "" || req.DisplayName == "" || req.Password == "" {
 		http.Error(w, "All fields are required", http.StatusBadRequest)
@@ -49,7 +51,7 @@ func (h *UserHTTPHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.svc.CreateUser(r.Context(), req.Email, req.Username, req.DisplayName, hash)
+	user, err := h.svc.CreateUser(r.Context(), req.Email, req.Username, req.DisplayName, hash, avatarKey)
 	if err != nil {
 		http.Error(w, "Failed to signup user", http.StatusInternalServerError)
 		return
@@ -131,6 +133,48 @@ func (h *UserHTTPHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request)
 		Email:       user.Email,
 		Username:    user.Username,
 		DisplayName: user.DisplayName,
+	})
+}
+
+func (h *UserHTTPHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
+	uid, ok := auth.UserIDFrom(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req types.UploadAvatarRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Avatar == "" {
+		http.Error(w, "No avatar assigned", http.StatusBadRequest)
+		return
+	}
+
+	imgBytes, err := base64.StdEncoding.DecodeString(req.Avatar)
+	if err != nil {
+		http.Error(w, "invalid base64 avatar", http.StatusBadRequest)
+		return
+	}
+
+	contentType := http.DetectContentType(imgBytes)
+	if !strings.HasPrefix(contentType, "image/") {
+		http.Error(w, "avatar is not an image", http.StatusBadRequest)
+		return
+	}
+
+	url, key, err := h.svc.CreateAvatarUploadIntent(r.Context(), uid, contentType)
+	if err != nil {
+		http.Error(w, "Failed to upload avatar", http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJSON(w, http.StatusOK, types.UploadAvatarResponse{
+		Url: url,
+		Key: key,
 	})
 }
 
