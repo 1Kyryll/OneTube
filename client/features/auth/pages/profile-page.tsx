@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { completeAvatarUpload, createAvatarUploadIntent } from "../actions";
 import { useAuth } from "../auth-provider";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 export function ProfilePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
@@ -59,17 +60,20 @@ export function ProfilePage() {
     setSaving(true);
     setError(null);
     try {
-      // TODO: wire to API
-      //   1) POST /api/users/me/avatar:upload  { content_type: file.type } -> { url, key }
-      //   2) PUT  url  (raw bytes, Content-Type: file.type)
-      //   3) POST /api/users/me/avatar:complete
-      //   4) refresh() so the navbar/profile picks up the new avatar
-      console.log("avatar upload pending API wiring", {
-        name: file.name,
-        type: file.type,
-        size: file.size,
+      const intent = await createAvatarUploadIntent(file.type);
+      if ("error" in intent) throw new Error(intent.error);
+
+      const put = await fetch(intent.url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
       });
-      await new Promise((r) => setTimeout(r, 400));
+      if (!put.ok) throw new Error(`Upload to storage failed (${put.status})`);
+
+      const complete = await completeAvatarUpload();
+      if (complete?.error) throw new Error(complete.error);
+
+      await refresh();
       onClear();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
