@@ -18,7 +18,9 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load("../../.env", "../.env", ".env")
+	for _, p := range []string{"../../.env", "../.env", ".env"} {
+		_ = godotenv.Load(p)
+	}
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
