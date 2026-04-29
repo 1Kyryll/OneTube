@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/base64"
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/1kyryll/onetube/server/internal/auth"
+	"github.com/1kyryll/onetube/server/internal/common/gen"
+	s3keys "github.com/1kyryll/onetube/server/internal/common/s3"
 	"github.com/1kyryll/onetube/server/internal/config"
 	"github.com/1kyryll/onetube/server/internal/user/types"
 	"github.com/1kyryll/onetube/server/internal/util"
@@ -38,7 +40,6 @@ func (h *UserHTTPHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	req.Username = strings.TrimSpace(req.Username)
 	req.DisplayName = strings.TrimSpace(req.DisplayName)
 	req.Password = strings.TrimSpace(req.Password)
-	avatarKey := ""
 
 	if req.Email == "" || req.Username == "" || req.DisplayName == "" || req.Password == "" {
 		http.Error(w, "All fields are required", http.StatusBadRequest)
@@ -51,19 +52,19 @@ func (h *UserHTTPHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.svc.CreateUser(r.Context(), req.Email, req.Username, req.DisplayName, hash, avatarKey)
+	user, err := h.svc.CreateUser(r.Context(), req.Email, req.Username, req.DisplayName, hash)
 	if err != nil {
 		http.Error(w, "Failed to signup user", http.StatusInternalServerError)
 		return
 	}
 
 	h.setSessionCookie(w, user.ID)
-	util.WriteJSON(w, http.StatusCreated, types.UserResponse{
-		ID:          user.ID,
-		Email:       user.Email,
-		Username:    user.Username,
-		DisplayName: user.DisplayName,
-	})
+	resp, err := h.toUserResponse(r.Context(), user)
+	if err != nil {
+		http.Error(w, "Failed to build user response", http.StatusInternalServerError)
+		return
+	}
+	util.WriteJSON(w, http.StatusCreated, resp)
 }
 
 func (h *UserHTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -94,12 +95,12 @@ func (h *UserHTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.setSessionCookie(w, user.ID)
-	util.WriteJSON(w, http.StatusOK, types.UserResponse{
-		ID:          user.ID,
-		Email:       user.Email,
-		Username:    user.Username,
-		DisplayName: user.DisplayName,
-	})
+	resp, err := h.toUserResponse(r.Context(), user)
+	if err != nil {
+		http.Error(w, "Failed to build user response", http.StatusInternalServerError)
+		return
+	}
+	util.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *UserHTTPHandler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -128,24 +129,29 @@ func (h *UserHTTPHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var avatarUrl string
-	if user.AvatarKey.Valid {
-		url, err := h.svc.GetAvatarUrl(r.Context(), user.AvatarKey.String, 15*time.Minute)
-		if err != nil {
-			http.Error(w, "Failed to get user avatar url", http.StatusInternalServerError)
-			return
-		}
-
-		avatarUrl = url
+	resp, err := h.toUserResponse(r.Context(), user)
+	if err != nil {
+		http.Error(w, "Failed to build user response", http.StatusInternalServerError)
+		return
 	}
+	util.WriteJSON(w, http.StatusOK, resp)
+}
 
-	util.WriteJSON(w, http.StatusOK, types.UserResponse{
+func (h *UserHTTPHandler) toUserResponse(ctx context.Context, user *gen.User) (types.UserResponse, error) {
+	resp := types.UserResponse{
 		ID:          user.ID,
 		Email:       user.Email,
 		Username:    user.Username,
 		DisplayName: user.DisplayName,
-		Avatar:      avatarUrl,
-	})
+	}
+	if user.AvatarKey.Valid {
+		url, err := h.svc.GetAvatarUrl(ctx, user.AvatarKey.String, 15*time.Minute)
+		if err != nil {
+			return types.UserResponse{}, err
+		}
+		resp.Avatar = url
+	}
+	return resp, nil
 }
 
 func (h *UserHTTPHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
@@ -161,26 +167,15 @@ func (h *UserHTTPHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Avatar == "" {
-		http.Error(w, "No avatar assigned", http.StatusBadRequest)
+	req.ContentType = strings.TrimSpace(req.ContentType)
+	if !strings.HasPrefix(req.ContentType, "image/") {
+		http.Error(w, "content_type must be an image/* MIME type", http.StatusBadRequest)
 		return
 	}
 
-	imgBytes, err := base64.StdEncoding.DecodeString(req.Avatar)
+	url, key, err := h.svc.CreateAvatarUploadIntent(r.Context(), uid, req.ContentType)
 	if err != nil {
-		http.Error(w, "Invalid base64 avatar", http.StatusBadRequest)
-		return
-	}
-
-	contentType := http.DetectContentType(imgBytes)
-	if !strings.HasPrefix(contentType, "image/") {
-		http.Error(w, "Avatar is not an image", http.StatusBadRequest)
-		return
-	}
-
-	url, key, err := h.svc.CreateAvatarUploadIntent(r.Context(), uid, contentType)
-	if err != nil {
-		http.Error(w, "Failed to upload avatar", http.StatusInternalServerError)
+		http.Error(w, "Failed to create upload intent", http.StatusInternalServerError)
 		return
 	}
 
@@ -197,20 +192,13 @@ func (h *UserHTTPHandler) CompleteAvatarUpload(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var req types.CompleteAvatarUploadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	key := s3keys.AvatarKey(uid)
+	if err := h.svc.UpdateUserAvatarKey(r.Context(), uid, key); err != nil {
+		http.Error(w, "Failed to save avatar", http.StatusInternalServerError)
 		return
 	}
 
-	if req.Key == "" {
-		http.Error(w, "No avatar key assigned", http.StatusBadRequest)
-		return
-	}
-
-	h.svc.UpdateUserAvatarKey(r.Context(), uid, req.Key)
-
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *UserHTTPHandler) setSessionCookie(w http.ResponseWriter, uid uuid.UUID) {

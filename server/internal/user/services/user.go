@@ -22,13 +22,13 @@ func NewUserService(queries *gen.Queries, s3 *s3client.Client) *UserServiceImpl 
 	}
 }
 
-func (s *UserServiceImpl) CreateUser(ctx context.Context, email, username, displayName, passwordHash string, avatarKey string) (*gen.User, error) {
+func (s *UserServiceImpl) CreateUser(ctx context.Context, email, username, displayName, passwordHash string) (*gen.User, error) {
 	u, err := s.queries.CreateUser(ctx, gen.CreateUserParams{
 		Email:        email,
 		Username:     username,
 		DisplayName:  displayName,
 		PasswordHash: passwordHash,
-		AvatarKey:    pgtype.Text{String: avatarKey, Valid: true},
+		AvatarKey:    pgtype.Text{Valid: false},
 	})
 
 	return &u, err
@@ -41,8 +41,8 @@ func (s *UserServiceImpl) CreateAvatarUploadIntent(ctx context.Context, userID u
 	return url, key, err
 }
 
-func (s *UserServiceImpl) UpdateUserAvatarKey(ctx context.Context, userID uuid.UUID, avatarKey string) {
-	s.queries.UpdateAvatarKey(ctx, gen.UpdateAvatarKeyParams{
+func (s *UserServiceImpl) UpdateUserAvatarKey(ctx context.Context, userID uuid.UUID, avatarKey string) error {
+	return s.queries.UpdateAvatarKey(ctx, gen.UpdateAvatarKeyParams{
 		AvatarKey: pgtype.Text{String: avatarKey, Valid: true},
 		ID:        userID,
 	})

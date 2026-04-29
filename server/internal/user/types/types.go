@@ -9,11 +9,11 @@ import (
 )
 
 type UserService interface {
-	CreateUser(ctx context.Context, email, username, displayName, passwordHash string, avatar string) (*gen.User, error)
+	CreateUser(ctx context.Context, email, username, displayName, passwordHash string) (*gen.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*gen.User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*gen.User, error)
 	CreateAvatarUploadIntent(ctx context.Context, userID uuid.UUID, contentType string) (string, string, error)
-	UpdateUserAvatarKey(ctx context.Context, userID uuid.UUID, avatarKey string)
+	UpdateUserAvatarKey(ctx context.Context, userID uuid.UUID, avatarKey string) error
 	GetAvatarUrl(ctx context.Context, avatarKey string, ttl time.Duration) (string, error)
 }
 
@@ -30,15 +30,11 @@ type LoginRequest struct {
 }
 
 type UploadAvatarRequest struct {
-	Avatar string `json:"avatar"`
+	ContentType string `json:"content_type"`
 }
 
 type UploadAvatarResponse struct {
 	Url string `json:"url"`
-	Key string `json:"key"`
-}
-
-type CompleteAvatarUploadRequest struct {
 	Key string `json:"key"`
 }
 
