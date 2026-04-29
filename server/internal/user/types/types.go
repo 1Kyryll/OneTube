@@ -12,6 +12,7 @@ type UserService interface {
 	GetUserByEmail(ctx context.Context, email string) (*gen.User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*gen.User, error)
 	CreateAvatarUploadIntent(ctx context.Context, userID uuid.UUID, contentType string) (string, string, error)
+	UpdateUserAvatarKey(ctx context.Context, userID uuid.UUID, avatarKey string)
 }
 
 type SignupRequest struct {
@@ -32,6 +33,10 @@ type UploadAvatarRequest struct {
 
 type UploadAvatarResponse struct {
 	Url string `json:"url"`
+	Key string `json:"key"`
+}
+
+type CompleteAvatarUploadRequest struct {
 	Key string `json:"key"`
 }
 

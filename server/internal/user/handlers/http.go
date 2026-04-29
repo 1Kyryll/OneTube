@@ -156,13 +156,13 @@ func (h *UserHTTPHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 
 	imgBytes, err := base64.StdEncoding.DecodeString(req.Avatar)
 	if err != nil {
-		http.Error(w, "invalid base64 avatar", http.StatusBadRequest)
+		http.Error(w, "Invalid base64 avatar", http.StatusBadRequest)
 		return
 	}
 
 	contentType := http.DetectContentType(imgBytes)
 	if !strings.HasPrefix(contentType, "image/") {
-		http.Error(w, "avatar is not an image", http.StatusBadRequest)
+		http.Error(w, "Avatar is not an image", http.StatusBadRequest)
 		return
 	}
 
@@ -176,6 +176,29 @@ func (h *UserHTTPHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		Url: url,
 		Key: key,
 	})
+}
+
+func (h *UserHTTPHandler) CompleteAvatarUpload(w http.ResponseWriter, r *http.Request) {
+	uid, ok := auth.UserIDFrom(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req types.CompleteAvatarUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Key == "" {
+		http.Error(w, "No avatar key assigned", http.StatusBadRequest)
+		return
+	}
+
+	h.svc.UpdateUserAvatarKey(r.Context(), uid, req.Key)
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *UserHTTPHandler) setSessionCookie(w http.ResponseWriter, uid uuid.UUID) {

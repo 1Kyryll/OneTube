@@ -41,6 +41,13 @@ func (s *UserServiceImpl) CreateAvatarUploadIntent(ctx context.Context, userID u
 	return url, key, err
 }
 
+func (s *UserServiceImpl) UpdateUserAvatarKey(ctx context.Context, userID uuid.UUID, avatarKey string) {
+	s.queries.UpdateAvatarKey(ctx, gen.UpdateAvatarKeyParams{
+		AvatarKey: pgtype.Text{String: avatarKey, Valid: true},
+		ID:        userID,
+	})
+}
+
 func (s *UserServiceImpl) GetUserByEmail(ctx context.Context, email string) (*gen.User, error) {
 	u, err := s.queries.GetUserByEmail(ctx, email)
 	if err != nil {
