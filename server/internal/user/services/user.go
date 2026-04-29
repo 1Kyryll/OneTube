@@ -48,6 +48,15 @@ func (s *UserServiceImpl) UpdateUserAvatarKey(ctx context.Context, userID uuid.U
 	})
 }
 
+func (s *UserServiceImpl) GetAvatarUrl(ctx context.Context, avatarKey string, ttl time.Duration) (string, error) {
+	url, err := s.s3.PresignGet(ctx, avatarKey, ttl)
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
+}
+
 func (s *UserServiceImpl) GetUserByEmail(ctx context.Context, email string) (*gen.User, error) {
 	u, err := s.queries.GetUserByEmail(ctx, email)
 	if err != nil {

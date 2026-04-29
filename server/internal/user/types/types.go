@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"time"
 
 	"github.com/1kyryll/onetube/server/internal/common/gen"
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ type UserService interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*gen.User, error)
 	CreateAvatarUploadIntent(ctx context.Context, userID uuid.UUID, contentType string) (string, string, error)
 	UpdateUserAvatarKey(ctx context.Context, userID uuid.UUID, avatarKey string)
+	GetAvatarUrl(ctx context.Context, avatarKey string, ttl time.Duration) (string, error)
 }
 
 type SignupRequest struct {

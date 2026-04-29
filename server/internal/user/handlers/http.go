@@ -128,11 +128,23 @@ func (h *UserHTTPHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	var avatarUrl string
+	if user.AvatarKey.Valid {
+		url, err := h.svc.GetAvatarUrl(r.Context(), user.AvatarKey.String, 15*time.Minute)
+		if err != nil {
+			http.Error(w, "Failed to get user avatar url", http.StatusInternalServerError)
+			return
+		}
+
+		avatarUrl = url
+	}
+
 	util.WriteJSON(w, http.StatusOK, types.UserResponse{
 		ID:          user.ID,
 		Email:       user.Email,
 		Username:    user.Username,
 		DisplayName: user.DisplayName,
+		Avatar:      avatarUrl,
 	})
 }
 
